@@ -43,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedGlobalPrompt }) => {
     globalMessages,
     addGlobalMessage,
     clearGlobalMessages,
+    addKnowledge,
     knowledgeList,
     openFiles,
     activeFilePath,
@@ -58,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedGlobalPrompt }) => {
   const [aiReady, setAiReady] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeEntry | null>(null);
+  const [savedAnswerIds, setSavedAnswerIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -128,6 +130,55 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedGlobalPrompt }) => {
     }
   };
 
+  const getAnswerQuestion = (answerIndex: number) => {
+    for (let index = answerIndex - 1; index >= 0; index -= 1) {
+      if (globalMessages[index]?.role === 'user') return globalMessages[index].content;
+    }
+    return '代码讲解';
+  };
+
+  const makeKnowledgeTitle = (question: string, answer: string) => {
+    const heading = answer.match(/^#{1,3}\s+(.+)$/m)?.[1]?.trim();
+    if (heading) return heading.slice(0, 18);
+
+    const compactQuestion = question.replace(/\s+/g, ' ').trim();
+    if (compactQuestion) return compactQuestion.slice(0, 18);
+
+    return 'AI 讲解';
+  };
+
+  const makeKnowledgeSummary = (answer: string) =>
+    answer
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/[#>*_`-]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180) || 'AI 对代码的讲解。';
+
+  const saveAnswerAsKnowledge = (answer: typeof globalMessages[number], answerIndex: number) => {
+    if (answer.role !== 'assistant' || savedAnswerIds.has(answer.id)) return;
+
+    const question = getAnswerQuestion(answerIndex);
+    const relatedFile = openFiles.find((file) => file.path === answer.filePath) || activeFile;
+    const context = [
+      relatedFile?.content ? `代码:\n${relatedFile.content}` : '',
+      `问题:\n${question}`,
+      `回答:\n${answer.content}`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    addKnowledge(
+      makeKnowledgeTitle(question, answer.content),
+      makeKnowledgeSummary(answer.content),
+      context,
+      answer.filePath || relatedFile?.path,
+      undefined,
+      ['AI讲解']
+    );
+    setSavedAnswerIds((current) => new Set(current).add(answer.id));
+  };
+
   if (showHistory) {
     return <FullHistoryPanel onClose={() => setShowHistory(false)} />;
   }
@@ -179,9 +230,18 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedGlobalPrompt }) => {
 
         {(globalMessages.length > 0 || isLoading) && (
           <div className="assistant-thread">
-            {globalMessages.slice(-6).map((message) => (
-              <GlobalChatMessage key={message.id} message={message} />
-            ))}
+            {globalMessages.slice(-6).map((message) => {
+              const messageIndex = globalMessages.findIndex((item) => item.id === message.id);
+              return (
+                <GlobalChatMessage
+                  key={message.id}
+                  message={message}
+                  canSave={message.role === 'assistant'}
+                  saved={savedAnswerIds.has(message.id)}
+                  onSaveKnowledge={() => saveAnswerAsKnowledge(message, messageIndex)}
+                />
+              );
+            })}
 
             {isLoading && streamingContent && (
               <div className="streaming-answer">
