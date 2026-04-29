@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CodeLens
 
-## Getting Started
+CodeLens 是一个浏览器优先的 AI 代码学习工具。目标用户不需要会跑本地项目：打开网页，填写自己的 DeepSeek API Key，选择本地代码文件夹，就可以开始问局部代码和全局架构问题。
 
-First, run the development server:
+## 给使用者
+
+1. 打开部署后的 GitHub Pages 网址。
+2. 点右侧栏的设置按钮，填写 DeepSeek API Key。
+3. 点左侧的文件夹按钮，选择要学习的代码目录。
+4. 在编辑器里圈选一段代码后右键提问，或在右侧输入框问整个项目。
+
+设置只保存在当前浏览器的 `localStorage`，不会写入仓库。由于 GitHub Pages 是纯静态网页，AI 请求会从浏览器直接发到 DeepSeek。如果浏览器提示跨域失败，可以在设置里把 `API Base URL` 改成你自己的 OpenAI-compatible 代理地址。
+
+## 给维护者
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+常用检查：
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`npm run build` 会生成静态站点到 `out/`，可以部署到任意静态托管服务。
 
-## Learn More
+## GitHub Pages 部署
 
-To learn more about Next.js, take a look at the following resources:
+仓库已包含 `.github/workflows/deploy-pages.yml`。推送到 `main` 后，GitHub Actions 会：
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. 安装依赖。
+2. 设置 `NEXT_PUBLIC_BASE_PATH=/<仓库名>`。
+3. 执行 `npm run build`。
+4. 上传 `out/` 并部署到 GitHub Pages。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+第一次使用时需要在 GitHub 仓库的 `Settings -> Pages` 中把 Source 设为 `GitHub Actions`。
 
-## Deploy on Vercel
+如果你使用自定义域名，不需要仓库子路径，可以把 workflow 里的 `NEXT_PUBLIC_BASE_PATH` 删除或设为空。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 当前边界
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 推荐 Chromium 系浏览器使用文件夹选择能力；Safari/Firefox 对 File System Access API 支持较弱。
+- GitHub Pages 模式没有服务端，API Key 必须在浏览器端使用。
+- 本地 `.env.local` 不再是普通用户路径的一部分，保留给未来本地增强模式。

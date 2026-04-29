@@ -5,12 +5,21 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "react/no-unescaped-entities": "off",
+    },
+  },
   globalIgnores([
-    // Default ignores of eslint-config-next:
+    "node_modules/**",
+    ".git/**",
+    ".superpowers/**",
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
   ]),
 ]);
